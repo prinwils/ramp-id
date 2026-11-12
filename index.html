@@ -1039,6 +1039,88 @@ function profile(id, Sopt){
 }
 
 /* ---------- game ---------- */
+/* ---------- Beechjet 400A / Hawker 400XP: hand-drawn from a reference photo (white, blue tail and nacelle) ---------- */
+CUSTOM.be40 = { L: 48.6, draw: g => {
+  const o = [skinDefs(g)];
+  o.push(`<defs>
+    <linearGradient id="${g}bl" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#2f7fd6"/><stop offset=".55" stop-color="#1a5fb4"/><stop offset="1" stop-color="#0c3f86"/></linearGradient>
+    <linearGradient id="${g}ch" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#f4f7fa"/><stop offset=".5" stop-color="#9aa6b2"/><stop offset="1" stop-color="#e8edf2"/></linearGradient>
+    <linearGradient id="${g}st" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#f3f5f7"/><stop offset="1" stop-color="#c3cbd3"/></linearGradient>
+  </defs>`);
+  const body = `url(#${g}b)`, glass = `url(#${g}g)`, blue = `url(#${g}bl)`, chrome = `url(#${g}ch)`, stab = `url(#${g}st)`;
+  const blueStroke = "#0b356f";
+  o.push(`<ellipse cx="24" cy="0" rx="22" ry=".35" fill="rgba(0,0,0,.35)"/>`);
+
+  // far-side horizontal stabilizer tip peeking behind the fin
+  o.push(pth("M43.3,13.55 L47.9,13.75 L48.4,13.62 L44.4,13.35 Z", stab, .8));
+  // fin + dorsal fillet (blue)
+  o.push(pth("M31.2,8.3 C34.2,8.45 35.9,8.85 37.3,9.6 L43.0,13.6 L46.7,13.6 L45.4,6.6 Z", blue, 1.1, blueStroke));
+  o.push(ln("M44.95,13.5 L44.05,7.3", .8, "#0a2f62"));                       // rudder hinge
+  o.push(ln("M45.9,10.3 L44.6,10.2", .6, "#0a2f62"));                        // rudder trim tab
+  o.push(`<circle cx="45.2" cy="13.95" r=".12" fill="#e0262b"/>`);            // beacon on the stab
+
+  // fuselage (white)
+  const fus = `M0.05,3.9 C0.2,4.55 1.6,5.45 4.2,6.1 C5.6,6.45 6.6,6.75 7.2,6.95
+    C8.4,7.75 9.6,8.25 11.2,8.38 L31.5,8.38 C36.5,8.25 41.2,7.5 45.2,6.75 L45.95,6.1
+    C45.95,5.6 45.6,5.3 44.6,5.15 C40.5,4.5 36.5,3.0 32.2,2.35 L9.8,2.2
+    C6.2,2.2 2.4,2.75 0.7,3.35 C0.25,3.5 0.05,3.7 0.05,3.9 Z`;
+  o.push(pth(fus, body, 1.2));
+  // blue aft fuselage under the fin (clip to fuselage shape)
+  o.push(`<clipPath id="${g}fc"><path d="${fus}"/></clipPath>`);
+  o.push(`<g clip-path="url(#${g}fc)"><path d="M33.0,8.6 C36.0,8.0 38.5,7.2 40.5,6.4 C42.0,5.9 44,5.7 46.5,5.75 L46.5,8.6 Z" fill="${blue}"/>
+    <path d="M0.9,4.4 C4,5.5 9,6.0 15,6.08 C22,6.15 27,6.3 31,6.6 L31,6.12 C27,5.85 22,5.7 15,5.64 C9,5.58 4.5,5.15 0.9,4.4 Z" fill="${blue}"/>
+    <path d="M5.5,4.92 C10,5.38 16,5.48 22,5.5 C27,5.53 29,5.6 31,5.74 L31,5.56 C27,5.43 22,5.36 16,5.33 C10,5.28 7,5.08 5.5,4.92 Z" fill="#8e99a5"/></g>`);
+  o.push(pth(fus, "none", 1.2));
+  // nose radome seam and nose details
+  o.push(ln("M3.6,2.6 C3.1,3.5 3.2,5.0 3.95,6.0", .7));
+  o.push(`<rect x="2.6" y="3.35" width=".55" height=".35" rx=".08" fill="#d7dde3" stroke="#5b6672" stroke-width=".6" ${NS}/>`);
+
+  // cockpit glass: windshield + pointed side window, dark frames
+  o.push(pth("M7.0,6.95 C8.0,7.75 9.0,8.2 10.2,8.33 L12.9,8.33 C13.25,8.05 13.3,7.4 13.05,6.9 C12.0,6.65 10.3,6.5 8.5,6.55 Z", glass, 1.1, "#0d1218"));
+  o.push(ln("M9.6,6.55 L10.25,8.3", 1.1, "#0d1218"));
+  o.push(ln("M11.5,6.6 L11.8,8.32", 1.1, "#0d1218"));
+  o.push(`<path d="M8.2,7.1 C9.0,7.65 9.6,7.9 10.0,8.0" fill="none" stroke="rgba(255,255,255,.45)" stroke-width="1" ${NS}/>`);
+
+  // cabin door (with its window) + 6 oval windows (1 forward, 1 in door, 4 aft)
+  o.push(`<rect x="16.15" y="3.4" width="3.05" height="4.65" rx=".35" fill="none" stroke="#7d8892" stroke-width="1" ${NS}/>`);
+  o.push(ln("M19.0,5.3 L19.0,5.9", .9, "#b42020"));
+  [15.05, 17.7, 20.5, 23.0, 25.45, 27.8].forEach(x => {
+    o.push(`<ellipse cx="${x}" cy="6.85" rx=".5" ry=".64" fill="#c7d0d8" stroke="#6c7782" stroke-width=".8" ${NS}/>`);
+    o.push(`<ellipse cx="${x}" cy="6.83" rx=".37" ry=".5" fill="${glass}"/>`);
+  });
+
+  // top antennas
+  o.push(pth("M19.5,8.36 L19.9,9.3 L20.35,9.3 L20.6,8.36 Z", body, .8));
+  o.push(pth("M24.2,8.36 L24.35,8.66 L24.9,8.66 L25.0,8.36 Z", body, .7));
+  o.push(pth("M28.6,8.36 L28.75,8.6 L29.2,8.6 L29.3,8.36 Z", body, .7));
+
+  // ventral fins under the tail cone
+  o.push(pth("M39.4,4.2 L43.7,4.95 L42.9,3.35 Z", body, .9));
+
+  // near wing (low, swept) seen edge-on, with flap line
+  o.push(pth("M20.6,2.7 C24,2.9 29,3.05 33.6,3.0 L35.8,2.8 L33.0,2.4 L21.4,2.2 Z", "#d4dadf", .9));
+  o.push(ln("M27.5,2.6 L34.6,2.85", .6));
+
+  // landing gear: nose + main (trailing link)
+  o.push(pth("M5.75,2.4 L6.05,2.4 L6.05,.7 L5.75,.7 Z", "#7f8a95", .7));
+  o.push(wheel(5.9, .68, .68, false));
+  o.push(`<circle cx="5.9" cy=".68" r=".68" fill="#0e1318" stroke="#4f5964" stroke-width="1" ${NS}/><circle cx="5.9" cy=".68" r=".3" fill="#9aa5af"/>`);
+  o.push(pth("M26.1,2.3 L26.45,2.3 L26.6,.95 L26.25,.95 Z", "#7f8a95", .7));
+  o.push(`<circle cx="26.45" cy=".92" r=".92" fill="#0e1318" stroke="#4f5964" stroke-width="1" ${NS}/><circle cx="26.45" cy=".92" r=".4" fill="#9aa5af"/>`);
+
+  // engine nacelle (blue) on a short pylon, chrome intake lip, reverser buckets at the back
+  o.push(pth("M31.4,6.75 L36.6,6.8 L36.0,7.45 L32.2,7.45 Z", "#e3e8ec", .8));            // pylon
+  o.push(pth("M30.3,8.6 C31.4,8.95 34.5,9.05 37.6,8.8 L39.0,8.4 L39.0,6.1 L37.6,5.75 C34.5,5.5 31.4,5.65 30.3,6.05 Z", blue, 1.1, blueStroke));
+  o.push(ln("M36.9,8.85 L36.9,5.7", .7, "#0a2f62"));                                       // reverser seam
+  o.push(pth("M39.0,8.15 L39.75,7.8 L39.75,6.65 L39.0,6.35 Z", "#5d6873", .8));                 // exhaust
+  o.push(`<ellipse cx="30.35" cy="7.32" rx=".36" ry="1.3" fill="${chrome}" stroke="#11151a" stroke-width=".9" ${NS}/>`);
+  o.push(`<ellipse cx="30.52" cy="7.32" rx=".2" ry="1.0" fill="#141a20"/>`);
+  o.push(`<path d="M31.0,8.5 C33.5,8.7 35.5,8.7 37.3,8.55" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="1" ${NS}/>`);
+
+  // near horizontal stabilizer on top of the fin (T-tail)
+  o.push(pth("M42.6,13.62 L46.9,13.72 L48.55,13.95 L47.2,13.5 L42.9,13.42 Z", stab, .9));
+  return o.join("");
+}};
 /* ---------- service lookup ---------- */
 // fuel: spr = single-point, ow = overwing only. lav: ext = external service, int = serviced inside, opt = external on some.
 // ok:false = location not confirmed by a source.
@@ -1240,6 +1322,7 @@ function lkMatches(id){
   const hay = (a.name + " " + a.icao + " " + id).toLowerCase().replace(/[\s\/+-]/g, "");
   return query.toLowerCase().split(/\s+/).filter(Boolean).every(w => hay.includes(w.replace(/[\s\/+-]/g, "")));
 }
+const fitS = id => Math.min(540 / ((CUSTOM[id] ? CUSTOM[id].L : A[id].L) + 3), 165 / A[id].H);
 function mediaBlock(id){
   const ph = PHOTOS[id] || [];
   return `<div class="media" data-id="${id}">
@@ -1247,7 +1330,7 @@ function mediaBlock(id){
       <button class="m-tab" role="tab" aria-selected="true" data-m="draw">Drawing</button>
       ${ph.map((p, i) => `<button class="m-tab" role="tab" aria-selected="false" data-m="${i}">Photo ${i + 1}</button>`).join("")}
     </div>
-    <div class="m-view"><div class="stage">${profile(id)}</div></div>
+    <div class="m-view"><div class="stage">${profile(id, fitS(id))}</div></div>
   </div>`;
 }
 function wireMedia(root){
@@ -1255,7 +1338,7 @@ function wireMedia(root){
     const id = m.dataset.id, view = m.querySelector(".m-view");
     m.querySelectorAll(".m-tab").forEach(t => t.onclick = () => {
       m.querySelectorAll(".m-tab").forEach(x => x.setAttribute("aria-selected", x === t ? "true" : "false"));
-      if (t.dataset.m === "draw") view.innerHTML = `<div class="stage">${profile(id)}</div>`;
+      if (t.dataset.m === "draw") view.innerHTML = `<div class="stage">${profile(id, fitS(id))}</div>`;
       else { const p = PHOTOS[id][+t.dataset.m]; view.innerHTML = `<figure class="photo"><img src="${pEsc(p.f)}" alt="Photo of a ${pEsc(A[id].name)}" loading="lazy"><figcaption class="credit">${pCredit(p)}</figcaption></figure>`; }
     });
   });
