@@ -1039,6 +1039,178 @@ function profile(id, Sopt){
 }
 
 /* ---------- game ---------- */
+/* ---------- photo-matched business-jet renderer (feet: nose x=0, ground z=0, z up) ---------- */
+function smoothPath(pts){                       // Catmull-Rom through points -> cubic Bezier path (no M)
+  let d = "";
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[Math.max(0, i - 1)], p1 = pts[i], p2 = pts[i + 1], p3 = pts[Math.min(pts.length - 1, i + 2)];
+    const c1 = [p1[0] + (p2[0] - p0[0]) / 6, p1[1] + (p2[1] - p0[1]) / 6], c2 = [p2[0] - (p3[0] - p1[0]) / 6, p2[1] - (p3[1] - p1[1]) / 6];
+    d += ` C${r2(c1[0])},${r2(c1[1])} ${r2(c2[0])},${r2(c2[1])} ${r2(p2[0])},${r2(p2[1])}`;
+  }
+  return d;
+}
+function band(pts, t, taper){                   // stripe of thickness t below a top edge; pointed start if taper
+  const top = `M${r2(pts[0][0])},${r2(pts[0][1])}` + smoothPath(pts);
+  const low = pts.slice().reverse().map((p, i, a) => { const k = taper && i === a.length - 1 ? 0 : 1; return [p[0], p[1] - t * k]; });
+  return top + ` L${r2(low[0][0])},${r2(low[0][1])}` + smoothPath(low) + " Z";
+}
+function bj(P){
+  const L = P.L, D = P.D, zb = P.zb, zt = zb + D, H = P.H;
+  const X = f => f * L;                          // fractions of overall length -> feet
+  const tipZ = zb + D * P.tip, xn = X(P.nb), ws0 = X(P.ws[0]), ws1 = X(P.ws[1]), wsZ = zt - D * (P.wsd || .3);
+  const Lc = X(P.cone[0]), zteT = zb + D * P.cone[1], zteB = zb + D * P.cone[2], xt0 = X(P.cone[3]), xb1 = X(P.cone[4]);
+  const T = P.tail, Ht = T.type === "T" ? H - .35 : H;
+  const fd = X(T.fd), fb = X(T.fb), ftl = X(T.tl), ftt = X(T.tt), fbt = X(T.bt), tipC = ftt - ftl;
+  const fus = `M0,${r2(tipZ)} C${r2(ws0 * .06)},${r2(tipZ + D * .17)} ${r2(ws0 * .5)},${r2(wsZ - D * .12)} ${r2(ws0)},${r2(wsZ)}
+    C${r2(ws0 + (ws1 - ws0) * .45)},${r2(wsZ + (zt - wsZ) * .8)} ${r2(ws1 - (ws1 - ws0) * .3)},${r2(zt)} ${r2(ws1)},${r2(zt)}
+    L${r2(xt0)},${r2(zt)} C${r2(xt0 + (Lc - xt0) * .55)},${r2(zt)} ${r2(Lc - (Lc - xt0) * .2)},${r2(zteT + (zt - zteT) * .35)} ${r2(Lc)},${r2(zteT)}
+    L${r2(Lc)},${r2(zteB)} C${r2(Lc - (Lc - xb1) * .2)},${r2(zteB - (zteB - zb) * .35)} ${r2(xb1 + (Lc - xb1) * .45)},${r2(zb)} ${r2(xb1)},${r2(zb)}
+    L${r2(xn)},${r2(zb)} C${r2(xn * .45)},${r2(zb)} ${r2(xn * .06)},${r2(tipZ - D * .13)} 0,${r2(tipZ)} Z`;
+  const fin = `M${r2(fd)},${r2(zt - .05)} C${r2(fd + (fb - fd) * .6)},${r2(zt + .05)} ${r2(fb - .1)},${r2(zt + (Ht - zt) * .06)} ${r2(fb + (ftl - fb) * .14)},${r2(zt + (Ht - zt) * .14)}
+    L${r2(ftl)},${r2(Ht)} L${r2(ftt)},${r2(Ht)} L${r2(fbt)},${r2(zteT + .2)} L${r2(fbt - 1.2)},${r2(zteT - .3)} Z`;
+  const pt = P.paint || {};
+  return { L: Math.max(L, ftt + (T.sx || 1.5)) + .3, draw: g => {
+    const o = [skinDefs(g)];
+    const col = c => c === "body" ? `url(#${g}b)` : c;
+    o.push(`<defs>
+      <linearGradient id="${g}sh" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="rgba(255,255,255,.18)"/><stop offset=".55" stop-color="rgba(255,255,255,0)"/><stop offset="1" stop-color="rgba(0,0,0,.22)"/></linearGradient>
+      <linearGradient id="${g}ch" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#f4f7fa"/><stop offset=".5" stop-color="#9aa6b2"/><stop offset="1" stop-color="#e8edf2"/></linearGradient>
+      <clipPath id="${g}fc"><path d="${fus}"/></clipPath><clipPath id="${g}ff"><path d="${fin}"/></clipPath></defs>`);
+    o.push(`<ellipse cx="${r2(L / 2)}" cy="0" rx="${r2(L * .45)}" ry=".35" fill="rgba(0,0,0,.35)"/>`);
+    // far stabilizer tip (T-tail) behind the fin
+    if (T.type === "T") o.push(pth(`M${r2(ftl + tipC * .3)},${r2(Ht + .1)} L${r2(ftt + (T.sx || 1.5) * .7)},${r2(Ht + .22)} L${r2(ftt)},${r2(Ht - .05)} Z`, "#c9d1d8", .7));
+    // fin + paint
+    o.push(pth(fin, col(pt.fin || "body"), 1.1));
+    o.push(`<g clip-path="url(#${g}ff)">`);
+    (pt.finBands || []).forEach(b => o.push(`<path d="M${r2(fd - 5)},${r2(zb + (Ht - zb) * b[0])} L${r2(ftt + 5)},${r2(zb + (Ht - zb) * b[0] + (b[2] || 0))} L${r2(ftt + 5)},${r2(H + 3)} L${r2(fd - 5)},${r2(H + 3)} Z" fill="${b[1]}"/>`));
+    (pt.finStripes || []).forEach(s => o.push(`<path d="${band(s.pts.map(p => [X(p[0]), zb + (Ht - zb) * p[1]]), s.t, false)}" fill="${s.c}"/>`));
+    o.push(`</g>`);
+    o.push(pth(fin, "none", 1.1));
+    o.push(ln(`M${r2(ftt - tipC * .38)},${r2(Ht - .1)} L${r2(fbt - 1.0)},${r2(zteT + .5)}`, .8));
+    // fuselage + paint
+    o.push(pth(fus, `url(#${g}b)`, 1.2));
+    o.push(`<g clip-path="url(#${g}fc)">`);
+    if (pt.belly) { const b = pt.belly; o.push(`<path d="M-1,${r2(zb + D * b.z[0])}${smoothPath([[-1, zb + D * b.z[0]], ...b.pts.map(p => [X(p[0]), zb + D * p[1]])])} L${r2(L + 2)},${r2(zb - 3)} L-1,${r2(zb - 3)} Z" fill="${b.c}"/>`); }
+    if (pt.aft) { const a = pt.aft; o.push(`<path d="M${r2(X(a.pts[0][0]))},${r2(zt + 2)} L${r2(X(a.pts[0][0]))},${r2(zb + D * a.pts[0][1])}${smoothPath(a.pts.map(p => [X(p[0]), zb + D * p[1]]))} L${r2(L + 2)},${r2(zt + 2)} Z" fill="${a.c}"/>`); }
+    (pt.stripes || []).forEach(s => o.push(`<path d="${band(s.pts.map(p => [X(p[0]), zb + D * p[1]]), s.t * 1.7, s.taper !== false)}" fill="${s.c}"/>`));
+    o.push(`<path d="${fus}" fill="url(#${g}sh)"/></g>`);
+    o.push(pth(fus, "none", 1.2));
+    o.push(ln(`M${r2(X(P.nb) * .55)},${r2(zb + .15)} C${r2(X(P.nb) * .4)},${r2(zb + D * .4)} ${r2(X(P.nb) * .42)},${r2(zb + D * .7)} ${r2(X(P.nb) * .5)},${r2(wsZ - .1)}`, .6));
+    // cockpit glass: windshield + side window, frame posts
+    const sx = X(P.side), gh = D * (P.gh || .2);
+    o.push(pth(`M${r2(ws0 + .15)},${r2(wsZ + .1)} C${r2(ws0 + (ws1 - ws0) * .45)},${r2(wsZ + (zt - wsZ) * .72)} ${r2(ws1 - (ws1 - ws0) * .3)},${r2(zt - .18)} ${r2(ws1)},${r2(zt - .18)}
+      L${r2(sx)},${r2(zt - .2)} C${r2(sx + .2)},${r2(zt - .2 - gh * .5)} ${r2(sx + .1)},${r2(zt - .2 - gh)} ${r2(sx - .3)},${r2(zt - .2 - gh)} L${r2(ws0 + .55)},${r2(wsZ - .08)} Z`, `url(#${g}g)`, 1.1, "#0d1218"));
+    [.5, .78].forEach(f => { const x = ws0 + (sx - ws0) * f; o.push(ln(`M${r2(x - .15)},${r2(zt - .18 - gh * 1.05)} L${r2(x + .1)},${r2(zt - .15)}`, 1.1, "#0d1218")); });
+    o.push(`<path d="M${r2(ws0 + .7)},${r2(wsZ + .2)} C${r2(ws0 + 1.4)},${r2(wsZ + (zt - wsZ) * .55)} ${r2(ws0 + 2)},${r2(zt - .4)} ${r2(ws0 + 2.6)},${r2(zt - .35)}" fill="none" stroke="rgba(255,255,255,.4)" stroke-width="1" ${NS}/>`);
+    // door
+    if (P.door) { const [dx, dw] = P.door; o.push(`<rect x="${r2(X(dx))}" y="${r2(zb + D * .1)}" width="${r2(X(dw))}" height="${r2(D * .8)}" rx=".35" fill="none" stroke="#7d8892" stroke-width="1" ${NS}/>`); }
+    // cabin windows
+    const W = P.win, wz = zb + D * W.z;
+    W.x.forEach(f => {
+      const cx = X(f);
+      if (W.shape === "oval") {
+        o.push(`<ellipse cx="${r2(cx)}" cy="${r2(wz)}" rx="${W.w / 2 + .1}" ry="${W.h / 2 + .1}" fill="#c7d0d8" stroke="#6c7782" stroke-width=".8" ${NS}/>`);
+        o.push(`<ellipse cx="${r2(cx)}" cy="${r2(wz)}" rx="${W.w / 2}" ry="${W.h / 2}" fill="url(#${g}g)"/>`);
+      } else {
+        o.push(`<rect x="${r2(cx - W.w / 2 - .1)}" y="${r2(wz - W.h / 2 - .1)}" width="${r2(W.w + .2)}" height="${r2(W.h + .2)}" rx="${r2(W.w * .32)}" fill="#c7d0d8" stroke="#6c7782" stroke-width=".8" ${NS}/>`);
+        o.push(`<rect x="${r2(cx - W.w / 2)}" y="${r2(wz - W.h / 2)}" width="${W.w}" height="${W.h}" rx="${r2(W.w * .3)}" fill="url(#${g}g)"/>`);
+      }
+    });
+    // antennas
+    (P.ant || []).forEach(f => o.push(pth(`M${r2(X(f) - .35)},${r2(zt - .02)} L${r2(X(f) + .05)},${r2(zt + .75)} L${r2(X(f) + .35)},${r2(zt + .75)} L${r2(X(f) + .5)},${r2(zt - .02)} Z`, `url(#${g}b)`, .7)));
+    // ventral fins
+    if (P.vent) { const [a, b] = P.vent; o.push(pth(`M${r2(X(a))},${r2(zb + D * .62)} L${r2(X(b))},${r2(zb + D * .74)} L${r2(X(b) - .5)},${r2(zb + D * .42)} Z`, `url(#${g}b)`, .9)); }
+    // near wing seen edge-on (rises toward the tip), winglet
+    const Wg = P.wing, wx = X(Wg.x), wc = X(Wg.c), wtx = X(Wg.tx), wtz = zb + D * (Wg.tz || .3);
+    o.push(pth(`M${r2(wx)},${r2(zb + .35)} C${r2(wx + (wtx - wx) * .5)},${r2(zb + .5)} ${r2(wtx - 1)},${r2(wtz)} ${r2(wtx)},${r2(wtz + .1)} L${r2(wtx + wc * .38)},${r2(wtz - .05)} L${r2(wx + wc)},${r2(zb + .1)} L${r2(wx + wc * .3)},${r2(zb - .05)} Z`, "#d4dadf", .9));
+    if (Wg.wl) { const h = Wg.wl, tc = wc * .3; o.push(pth(`M${r2(wtx - .2)},${r2(wtz)} C${r2(wtx + h * .2)},${r2(wtz + h * .3)} ${r2(wtx + h * .45)},${r2(wtz + h * .8)} ${r2(wtx + h * .7)},${r2(wtz + h)} L${r2(wtx + h * .7 + tc * .45)},${r2(wtz + h)} C${r2(wtx + tc * .95)},${r2(wtz + h * .4)} ${r2(wtx + tc)},${r2(wtz + h * .1)} ${r2(wtx + tc)},${r2(wtz)} Z`, col(pt.winglet || "body"), .9)); }
+    // gear
+    const G = P.gear, rn = G.rn || .7, rm = G.rm || .95;
+    o.push(pth(`M${r2(X(G.n) - .15)},${r2(zb + .1)} L${r2(X(G.n) + .15)},${r2(zb + .1)} L${r2(X(G.n) + .15)},${r2(rn)} L${r2(X(G.n) - .15)},${r2(rn)} Z`, "#7f8a95", .7));
+    o.push(`<circle cx="${r2(X(G.n))}" cy="${r2(rn)}" r="${rn}" fill="#0e1318" stroke="#4f5964" stroke-width="1" ${NS}/><circle cx="${r2(X(G.n))}" cy="${r2(rn)}" r="${r2(rn * .42)}" fill="#9aa5af"/>`);
+    o.push(pth(`M${r2(X(G.m) - .2)},${r2(zb + .1)} L${r2(X(G.m) + .2)},${r2(zb + .1)} L${r2(X(G.m) + .2)},${r2(rm)} L${r2(X(G.m) - .2)},${r2(rm)} Z`, "#7f8a95", .7));
+    o.push(`<circle cx="${r2(X(G.m))}" cy="${r2(rm)}" r="${rm}" fill="#0e1318" stroke="#4f5964" stroke-width="1" ${NS}/><circle cx="${r2(X(G.m))}" cy="${r2(rm)}" r="${r2(rm * .42)}" fill="#9aa5af"/>`);
+    // engine nacelle on its pylon
+    const E = P.eng, ex0 = X(E.x[0]), ex1 = X(E.x[1]), ed = E.d, ez = zb + D * E.z, el = ex1 - ex0;
+    o.push(pth(`M${r2(ex0 + el * .25)},${r2(ez - ed * .25)} L${r2(ex0 + el * .8)},${r2(ez - ed * .2)} L${r2(ex0 + el * .72)},${r2(ez - ed * .62)} L${r2(ex0 + el * .32)},${r2(ez - ed * .62)} Z`, "#e3e8ec", .8));
+    const nac = `M${r2(ex0)},${r2(ez + ed * .44)} C${r2(ex0 + el * .2)},${r2(ez + ed * .53)} ${r2(ex0 + el * .6)},${r2(ez + ed * .52)} ${r2(ex0 + el * .86)},${r2(ez + ed * .42)} L${r2(ex1)},${r2(ez + ed * .3)} L${r2(ex1)},${r2(ez - ed * .3)} L${r2(ex0 + el * .86)},${r2(ez - ed * .42)} C${r2(ex0 + el * .6)},${r2(ez - ed * .52)} ${r2(ex0 + el * .2)},${r2(ez - ed * .53)} ${r2(ex0)},${r2(ez - ed * .44)} Z`;
+    o.push(pth(nac, col(pt.nac || "body"), 1.1));
+    o.push(`<path d="${nac}" fill="url(#${g}sh)"/>`);
+    (pt.nacStripes || []).forEach(s => o.push(`<path d="M${r2(ex0 + el * s[0])},${r2(ez - ed * .5)} L${r2(ex0 + el * s[1])},${r2(ez - ed * .5)} L${r2(ex0 + el * s[1])},${r2(ez + ed * .55)} L${r2(ex0 + el * s[0])},${r2(ez + ed * .55)} Z" fill="${s[2]}" clip-path="none"/>`));
+    if (E.rev) o.push(ln(`M${r2(ex0 + el * .72)},${r2(ez + ed * .5)} L${r2(ex0 + el * .72)},${r2(ez - ed * .5)}`, .8));
+    o.push(pth(`M${r2(ex1)},${r2(ez + ed * .26)} L${r2(ex1 + ed * .28)},${r2(ez + ed * .12)} L${r2(ex1 + ed * .28)},${r2(ez - ed * .12)} L${r2(ex1)},${r2(ez - ed * .26)} Z`, "#5d6873", .8));
+    o.push(`<ellipse cx="${r2(ex0)}" cy="${r2(ez)}" rx="${r2(ed * .13)}" ry="${r2(ed * .45)}" fill="${pt.lip || `url(#${g}ch)`}" stroke="#11151a" stroke-width=".9" ${NS}/>`);
+    o.push(`<ellipse cx="${r2(ex0 + ed * .06)}" cy="${r2(ez)}" rx="${r2(ed * .07)}" ry="${r2(ed * .35)}" fill="#141a20"/>`);
+    // horizontal stabilizer (near side)
+    if (T.type === "T") o.push(pth(`M${r2(ftl - .2)},${r2(Ht - .05)} L${r2(ftl + tipC * .3)},${r2(Ht + .3)} L${r2(ftt + (T.sx || 1.5))},${r2(Ht + .45)} L${r2(ftt + (T.sx || 1.5) - .3)},${r2(Ht + .22)} L${r2(ftt)},${r2(Ht - .1)} Z`, "#dfe5ea", .9));
+    else {
+      const zs = zt + (Ht - zt) * T.sz, fr = (zs - zt) / (Ht - zt), le = fb + (ftl - fb) * fr, te = fbt + (ftt - fbt) * fr;
+      o.push(pth(`M${r2(le - 1)},${r2(zs - .1)} L${r2(le + (te - le) * .3)},${r2(zs + .2)} L${r2(te + (T.sx || 2))},${r2(zs + .38)} L${r2(te + (T.sx || 2) - .4)},${r2(zs + .12)} L${r2(te)},${r2(zs - .2)} Z`, "#dfe5ea", .9));
+    }
+    if (pt.beacon !== false) o.push(`<circle cx="${r2(ftl + tipC * .5)}" cy="${r2(Ht + (T.type === "T" ? .5 : .05))}" r=".12" fill="#e0262b"/>`);
+    return o.join("");
+  }};
+}
+/* ---------- Citations: proportions and paint measured from the reference photos ---------- */
+const NAVY = "#1d2b5a", RED = "#c41e2e", GOLD = "#b8955a";
+const shift = (pts, dz) => pts.map(p => [p[0], p[1] + dz]);
+CUSTOM.m2 = bj({ L: 42.6, H: 13.9, D: 5.8, zb: 2.0, tip: .25, nb: .2, ws: [.13, .22], wsd: .36, side: .25, gh: .25,
+  cone: [.92, .66, .52, .62, .6], tail: { type: "T", fd: .6, fb: .72, tl: .9, tt: 1.0, bt: .91, sx: 1.3 },
+  door: [.255, .05], win: { x: [.313, .358, .402, .447], shape: "rr", w: .95, h: 1.08, z: .66 },
+  eng: { x: [.55, .73], d: 2.6, z: .76 }, wing: { x: .38, c: .2, tx: .52, tz: .38, wl: .9 }, gear: { n: .14, m: .5, rn: .6, rm: .85 }, ant: [.4, .5],
+  paint: { fin: "#c0182b", belly: { c: "#5a5e65", z: [.3], pts: [[.12, .27], [.35, .22], [.6, .4], [.82, .56], [1.0, .64]] },
+    stripes: [{ c: "#c0182b", t: .3, pts: [[.04, .4], [.3, .34], [.6, .5], [.82, .64], [.95, .72]] }] } });
+CUSTOM.cj2 = bj({ L: 47.7, H: 14.0, D: 5.9, zb: 2.0, tip: .25, nb: .2, ws: [.12, .19], wsd: .36, side: .215, gh: .25,
+  cone: [.92, .66, .52, .62, .6], tail: { type: "T", fd: .62, fb: .76, tl: .885, tt: 1.0, bt: .918, sx: 1.6 },
+  door: [.205, .05], win: { x: [.27, .307, .342, .378, .414, .45], shape: "rr", w: .95, h: 1.08, z: .66 },
+  eng: { x: [.52, .69], d: 2.7, z: .76 }, wing: { x: .37, c: .19, tx: .5, tz: .38 }, gear: { n: .12, m: .46, rn: .6, rm: .85 }, ant: [.36, .48],
+  paint: { stripes: [{ c: "#c8202f", t: .28, pts: [[.04, .44], [.2, .38], [.5, .34], [.75, .42], [.9, .6], [.97, .72]] },
+    { c: "#1a1d22", t: .12, pts: [[.08, .32], [.2, .3], [.5, .26], [.75, .34], [.9, .52], [.97, .64]] }] } });
+CUSTOM.cj3 = bj({ L: 51.2, H: 15.2, D: 6.0, zb: 2.1, tip: .25, nb: .2, ws: [.13, .2], wsd: .36, side: .24, gh: .25,
+  cone: [.93, .66, .52, .66, .62], tail: { type: "T", fd: .66, fb: .77, tl: .9, tt: 1.0, bt: .92, sx: 1.8 },
+  door: [.287, .046], win: { x: [.31, .35, .387, .421, .456, .492, .527], shape: "rr", w: .92, h: 1.05, z: .66 },
+  eng: { x: [.657, .818], d: 2.8, z: .76 }, wing: { x: .38, c: .18, tx: .52, tz: .38 }, gear: { n: .12, m: .52, rn: .62, rm: .88 }, ant: [.4, .55],
+  paint: { stripes: [{ c: NAVY, t: .14, pts: [[.03, .46], [.15, .5], [.4, .47], [.6, .5], [.8, .6], [.95, .72]] },
+    { c: "#8c9097", t: .07, pts: [[.08, .38], [.4, .4], [.6, .42], [.8, .52], [.95, .64]] },
+    { c: "#7d1a2a", t: .24, pts: [[.55, .44], [.75, .52], [.9, .66], [.97, .74]] }],
+    finStripes: [{ c: NAVY, t: .25, pts: [[.75, .6], [.87, .64], [1.0, .7]] }] } });
+CUSTOM.cj4 = bj({ L: 53.3, H: 15.4, D: 6.1, zb: 2.1, tip: .25, nb: .2, ws: [.14, .22], wsd: .36, side: .26, gh: .25,
+  cone: [.93, .68, .54, .68, .62], tail: { type: "T", fd: .66, fb: .79, tl: .92, tt: 1.0, bt: .93, sx: 1.9 },
+  door: [.28, .05], win: { x: [.364, .403, .442, .477, .514], shape: "rr", w: .95, h: 1.08, z: .66 },
+  eng: { x: [.633, .81], d: 3.0, z: .8 }, wing: { x: .4, c: .18, tx: .57, tz: .38 }, gear: { n: .11, m: .56, rn: .62, rm: .9 }, ant: [.45],
+  paint: { stripes: [{ c: RED, t: .16, pts: [[.03, .4], [.3, .36], [.6, .36], [.8, .45], [.93, .66]] },
+    { c: NAVY, t: .14, pts: [[.06, .32], [.3, .29], [.6, .29], [.8, .38], [.93, .58]] }],
+    finBands: [[.95, NAVY]], finStripes: [{ c: RED, t: .35, pts: [[.78, .82], [.9, .86], [1.0, .9]] }] } });
+const XLS_BASE = { L: 52.5, H: 17.2, D: 6.8, zb: 2.3, tip: .25, nb: .2, ws: [.12, .18], wsd: .3, side: .2, gh: .18,
+  cone: [.94, .78, .5, .72, .62], tail: { type: "cru", fd: .66, fb: .8, tl: .91, tt: 1.0, bt: .955, sz: .08, sx: 2 },
+  door: [.256, .04], eng: { x: [.546, .75], d: 3.0, z: .66, rev: true }, vent: [.8, .9],
+  wing: { x: .37, c: .2, tx: .5, tz: .36 }, gear: { n: .1, m: .49, rn: .65, rm: .95 }, ant: [.35, .5] };
+CUSTOM.xls = bj(Object.assign({}, XLS_BASE, { win: { x: [.322, .369, .415, .462, .52], shape: "oval", w: .92, h: 1.18, z: .62 },
+  paint: { lip: RED, stripes: [{ c: NAVY, t: .5, pts: [[.03, .38], [.3, .36], [.6, .37], [.8, .5], [.93, .7], [.98, .76]] },
+    { c: GOLD, t: .06, pts: [[.08, .45], [.3, .44], [.6, .45], [.8, .58], [.93, .78]] }], finBands: [[.9, NAVY]] } }));
+CUSTOM.xlsp = bj(Object.assign({}, XLS_BASE, { tip: .28, nb: .22, ws: [.13, .19], side: .21,
+  win: { x: [.3, .345, .39, .435, .48, .525], shape: "oval", w: .92, h: 1.18, z: .62 },
+  paint: { lip: "#b81d2a", belly: { c: "#b81d2a", z: [.33], pts: [[.1, .3], [.4, .28], [.7, .3], [.85, .45], [1.0, .62]] },
+    stripes: [{ c: GOLD, t: .06, pts: [[.08, .4], [.4, .37], [.7, .39], [.85, .54], [.98, .7]] }, { c: "#ffffff", t: .08, pts: [[.3, .2], [.6, .2], [.85, .36]] }],
+    finBands: [[.78, "#b81d2a"]] } }));
+CUSTOM.sov = bj({ L: 63.5, H: 20.3, D: 7.3, zb: 2.6, tip: .27, nb: .2, ws: [.1, .16], wsd: .3, side: .18, gh: .17,
+  cone: [.95, .78, .5, .74, .62], tail: { type: "cru", fd: .66, fb: .79, tl: .935, tt: 1.0, bt: .96, sz: .45, sx: 2.2 },
+  door: [.233, .04], win: { x: [.289, .328, .368, .408, .448, .488, .535], shape: "oval", w: .98, h: 1.22, z: .62 },
+  eng: { x: [.624, .8], d: 3.8, z: .7, rev: true }, wing: { x: .37, c: .19, tx: .53, tz: .32 }, gear: { n: .1, m: .55, rn: .7, rm: 1.0 }, ant: [.33, .5],
+  paint: { belly: { c: NAVY, z: [.35], pts: [[.1, .33], [.3, .37], [.6, .41], [.8, .55], [1.0, .76]] },
+    stripes: [{ c: GOLD, t: .07, pts: [[.06, .43], [.3, .45], [.6, .49], [.8, .63], [.98, .82]] }],
+    nacStripes: [[0, .16, NAVY]], finBands: [[.86, NAVY, -.8]] } });
+CUSTOM.lat = bj({ L: 62.3, H: 20.9, D: 8.1, zb: 2.7, tip: .26, nb: .2, ws: [.13, .2], wsd: .3, side: .24, gh: .18,
+  cone: [.96, .74, .52, .75, .66], tail: { type: "T", fd: .68, fb: .79, tl: .93, tt: 1.0, bt: .97, sx: 2.2 },
+  door: [.247, .047], win: { x: [.332, .369, .405, .442, .478], shape: "oval", w: 1.02, h: 1.3, z: .63 },
+  eng: { x: [.636, .855], d: 4.0, z: .68 }, wing: { x: .38, c: .2, tx: .55, tz: .32 }, gear: { n: .108, m: .575, rn: .7, rm: 1.0 }, ant: [.35, .62],
+  paint: { stripes: [{ c: "#8a6a3c", t: .22, pts: [[.03, .43], [.2, .47], [.45, .5], [.65, .53], [.86, .6]] },
+    { c: "#2a2420", t: .11, pts: [[.06, .36], [.2, .4], [.45, .43], [.65, .46], [.86, .53]] }] } });
+CUSTOM.lon = bj({ L: 73.2, H: 19.8, D: 8.4, zb: 2.9, tip: .26, nb: .2, ws: [.1, .18], wsd: .36, side: .22, gh: .25,
+  cone: [.86, .72, .48, .68, .6], tail: { type: "T", fd: .6, fb: .72, tl: .86, tt: 1.0, bt: .85, sx: 2.5 },
+  door: [.225, .035], win: { x: [.3, .329, .358, .387, .416, .445, .472], shape: "rr", w: 1.05, h: 1.15, z: .64 },
+  eng: { x: [.613, .79], d: 4.5, z: .68 }, wing: { x: .38, c: .2, tx: .6, tz: .35, wl: 2.5 }, gear: { n: .08, m: .55, rn: .75, rm: 1.05 }, ant: [.3, .36, .5],
+  paint: { stripes: [0, .075, .15].map(dz => ({ c: RED, t: .14, pts: shift([[.04, .32], [.25, .34], [.5, .4], [.7, .48], [.86, .54]], dz) })) } });
 /* ---------- Beechjet 400A / Hawker 400XP: hand-drawn from a reference photo (white, blue tail and nacelle) ---------- */
 CUSTOM.be40 = { L: 48.6, draw: g => {
   const o = [skinDefs(g)];
