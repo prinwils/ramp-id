@@ -829,7 +829,9 @@ function airliner(id){
     const fr0 = L * (p.fin0 || .78), tanF = p.tanF || .75, fh = a.H - zt;
     const tipLE = fr0 + fh * tanF, tipC = Math.min(fh * .42, L + 1 - tipLE);
     const finD = `M${r2(fr0 - L * .08)},${r2(zt - .05)} C${r2(fr0 - L * .03)},${r2(zt + .2)} ${r2(fr0 - 1)},${r2(zt + fh * .06)} ${r2(fr0 + fh * .1 * tanF)},${r2(zt + fh * .1)} L${r2(tipLE)},${r2(a.H)} L${r2(tipLE + tipC)},${r2(a.H)} L${r2(L * .975)},${r2(zc + D * .3)} Z`;
-    o.push(pth(finD, body));
+    const AP = (typeof APAINT !== "undefined" && APAINT[id]) || null;
+    o.push(pth(finD, AP && AP.fin ? AP.fin : body));
+    if (AP) o.push(alFinPaint(AP, g, finD, L, D, zb, zt, a.H));
     o.push(ln(`M${r2(tipLE + tipC * .62)},${r2(a.H - .2)} L${r2(L * .93)},${r2(zt + 1)}`));
     // ---- fuselage
     const nose = nk === "airbus" || nk === "a380" ? [0, .62, .3] : nk === "787" ? [.12, .42, .58] : [.03, .5, .45];
@@ -842,6 +844,7 @@ function airliner(id){
       L${r2(tailX)},${r2(tailZ - D * .06)} C${r2(L * .93)},${r2(zc - D * .18)} ${r2(L * .82)},${r2(zb + D * .02)} ${r2(L * .68)},${r2(zb)}
       L${r2(nLen * .8)},${r2(zb)} C${r2(nLen * .3)},${r2(zb)} 0,${r2(zn - D * .22)} 0,${r2(zn)} Z`;
     o.push(pth(fus, body, 1.2));
+    if (AP) o.push(alBodyPaint(AP, g, fus, L, D, zb, zt));
     if (p.cone === "point") o.push(pth(`M${r2(L - 1.2)},${r2(tailZ + .9)} L${r2(L + 1.6)},${r2(tailZ + .1)} L${r2(L + 1.6)},${r2(tailZ - .1)} L${r2(L - 1.2)},${r2(tailZ - .9)} Z`, "#59636d", .8));
     else o.push(`<ellipse cx="${r2(tailX)}" cy="${r2(tailZ)}" rx=".35" ry="${r2(D * .05)}" fill="#1b232b"/>`);
     // ---- 747 upper deck windows + door
@@ -851,7 +854,7 @@ function airliner(id){
     }
     // cheatline
     const wz = zb + D * (p.winZ || .6);
-    o.push(`<path d="M${r2(nLen * .45)},${r2(wz - 1.4)} L${r2(L * .9)},${r2(wz - 1.2)}" fill="none" stroke="#3f6fa3" stroke-width="2" ${NS}/>`);
+    if (!AP) o.push(`<path d="M${r2(nLen * .45)},${r2(wz - 1.4)} L${r2(L * .9)},${r2(wz - 1.2)}" fill="none" stroke="#3f6fa3" stroke-width="2" ${NS}/>`);
     // ---- cockpit glass
     const cz = hx ? zt + hu - D * .1 : nk === "a380" ? zb + D * .64 : zt - D * .1;
     const c1 = nLen * (hx ? .42 : nk === "a380" ? .34 : .55), c2 = nLen * (hx ? .78 : nk === "a380" ? .62 : .9);
@@ -895,7 +898,7 @@ function airliner(id){
       const fanE = x0 + el * .72, coreE = x0 + el;
       o.push(pth(`M${r2(fanE - .3)},${r2(ez + ed * .3)} L${r2(coreE)},${r2(ez + ed * .17)} L${r2(coreE)},${r2(ez - ed * .17)} L${r2(fanE - .3)},${r2(ez - ed * .3)} Z`, "#8a959f", .8));
       o.push(pth(`M${r2(coreE)},${r2(ez + ed * .1)} L${r2(coreE + ed * .35)},${r2(ez)} L${r2(coreE)},${r2(ez - ed * .1)} Z`, "#4a535c", .7));
-      o.push(pth(`M${r2(x0)},${r2(ez + ed * .47)} C${r2(x0 + el * .15)},${r2(ez + ed * .53)} ${r2(x0 + el * .5)},${r2(ez + ed * .5)} ${r2(fanE)},${r2(ez + ed * .36)} L${r2(fanE)},${r2(ez - ed * .36)} C${r2(x0 + el * .5)},${r2(ez - ed * .5)} ${r2(x0 + el * .15)},${r2(ez - ed * .53)} ${r2(x0)},${r2(ez - ed * .47)} Z`, metal, 1.1));
+      o.push(pth(`M${r2(x0)},${r2(ez + ed * .47)} C${r2(x0 + el * .15)},${r2(ez + ed * .53)} ${r2(x0 + el * .5)},${r2(ez + ed * .5)} ${r2(fanE)},${r2(ez + ed * .36)} L${r2(fanE)},${r2(ez - ed * .36)} C${r2(x0 + el * .5)},${r2(ez - ed * .5)} ${r2(x0 + el * .15)},${r2(ez - ed * .53)} ${r2(x0)},${r2(ez - ed * .47)} Z`, AP && AP.nac ? AP.nac : metal, 1.1));
       if (p.chev) { let d = `M${r2(fanE)},${r2(ez + ed * .36)}`; const n = 6; for (let i = 0; i < n; i++) { const z1 = ez + ed * .36 - ed * .72 * (i + .5) / n, z2 = ez + ed * .36 - ed * .72 * (i + 1) / n; d += ` L${r2(fanE + ed * .12)},${r2(z1)} L${r2(fanE)},${r2(z2)}`; } o.push(`<path d="${d}" fill="#d9dfe4" stroke="#11151a" stroke-width=".7" ${NS}/>`); }
       o.push(ln(`M${r2(x0 + el * .3)},${r2(ez + ed * .52)} L${r2(x0 + el * .3)},${r2(ez - ed * .52)}`, .6));
       o.push(`<ellipse cx="${r2(x0 + .15)}" cy="${r2(ez)}" rx="${r2(ed * .07)}" ry="${r2(ed * .47)}" fill="#d9dfe4" stroke="#11151a" stroke-width=".8" ${NS}/>`);
@@ -1453,6 +1456,100 @@ CUSTOM.be40 = { L: 48.6, draw: g => {
   o.push(pth("M42.6,13.62 L46.9,13.72 L48.55,13.95 L47.2,13.5 L42.9,13.42 Z", stab, .9));
   return o.join("");
 }};
+/* ---------- airliner paint layer: x = fraction of L, z = fraction of D (body) or of fin height (fin) ---------- */
+function alBodyPaint(P, g, fus, L, D, zb, zt){
+  const X = f => f * L, Z = f => zb + D * f, o = [`<defs><clipPath id="${g}alc"><path d="${fus}"/></clipPath></defs><g clip-path="url(#${g}alc)">`];
+  if (P.top) o.push(`<path d="M-2,${r2(zt + 30)} L-2,${r2(Z(P.top[0][1]))}${smoothPath([[-2, Z(P.top[0][1])], ...P.top.map(p => [X(p[0]), Z(p[1])])])} L${r2(L + 3)},${r2(zt + 30)} Z" fill="${P.topC}"/>`);
+  if (P.belly) o.push(`<path d="M-2,${r2(Z(P.belly[0][1]))}${smoothPath([[-2, Z(P.belly[0][1])], ...P.belly.map(p => [X(p[0]), Z(p[1])])])} L${r2(L + 3)},-2 L-2,-2 Z" fill="${P.bellyC}"/>`);
+  if (P.aft) o.push(`<path d="M${r2(X(P.aft[0][0]))},${r2(zt + 30)} L${r2(X(P.aft[0][0]))},${r2(Z(P.aft[0][1]))}${smoothPath(P.aft.map(p => [X(p[0]), Z(p[1])]))} L${r2(L + 3)},-2 L${r2(L + 3)},${r2(zt + 30)} Z" fill="${P.aftC}"/>`);
+  (P.stripes || []).forEach(s => o.push(`<path d="${band(s.pts.map(p => [X(p[0]), Z(p[1])]), s.t, s.taper === true)}" fill="${s.c}"/>`));
+  o.push(`<path d="${fus}" fill="url(#${g}sh2)"/></g>`);
+  o.push(`<defs><linearGradient id="${g}sh2" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="rgba(255,255,255,.16)"/><stop offset=".55" stop-color="rgba(255,255,255,0)"/><stop offset="1" stop-color="rgba(0,0,0,.2)"/></linearGradient></defs>`);
+  o.push(pth(fus, "none", 1.2));
+  return o.join("");
+}
+function alFinPaint(P, g, finD, L, D, zb, zt, H){
+  const X = f => f * L, Z = f => zt + (H - zt) * f, o = [`<defs><clipPath id="${g}alf"><path d="${finD}"/></clipPath></defs><g clip-path="url(#${g}alf)">`];
+  (P.finBands || []).forEach(b => o.push(`<path d="M${r2(L * .6)},${r2(Z(b[0]))} L${r2(L + 20)},${r2(Z(b[0]) + (b[2] || 0))} L${r2(L + 20)},${r2(H + 20)} L${r2(L * .6)},${r2(H + 20)} Z" fill="${b[1]}"/>`));
+  (P.finStripes || []).forEach(s => o.push(`<path d="${band(s.pts.map(p => [X(p[0]), Z(p[1])]), s.t, false)}" fill="${s.c}"/>`));
+  o.push(`</g>`, pth(finD, "none", 1.1));
+  return o.join("");
+}
+/* ---------- airliner paint, matched to each type's reference photo (colours only: no logos, names or regos) ---------- */
+const NAVY_DL = "#0b1f5c", RED_DL = "#c8102e";
+const DELTA = { bellyC: NAVY_DL, belly: [[.05, .14], [.35, .2], [.6, .22], [.8, .26], [1, .36]], fin: RED_DL,
+  finBands: [[.6, NAVY_DL, 10]], finStripes: [{ c: "#8f0c22", t: 2.2, pts: [[.86, .05], [.92, .35], [.98, .6]] }], nac: NAVY_DL };
+const APAINT = {
+  // Southwest-style: blue body, red/yellow sweep at the tail
+  b737: { topC: "#2b3fa0", top: [[0, -.2], [1, -.2]], aftC: RED_DL, aft: [[.73, -.1], [.79, .3], [.85, .7], [.89, 1.1]],
+    stripes: [{ c: "#f2b31c", t: 3.2, pts: [[.71, .1], [.77, .5], [.82, .9], [.85, 1.2]] }],
+    fin: RED_DL, finBands: [[.08, RED_DL], [.45, RED_DL]], finStripes: [{ c: "#f2b31c", t: 3, pts: [[.79, .0], [.86, .4], [.95, 1.0]] }, { c: "#2b3fa0", t: 3.2, pts: [[.76, -.1], [.83, .2], [.9, .5]] }], nac: "#2b3fa0" },
+  // American-style: bare silver, striped flag tail
+  b738: { topC: "#c4cad0", top: [[0, -.2], [1, -.2]], fin: "#c4cad0",
+    finStripes: [0, 1, 2, 3, 4].map(i => ({ c: RED_DL, t: 1.4, pts: [[.82, .1 + i * .13], [.9, .2 + i * .13], [1, .3 + i * .13]] })).concat([{ c: "#0b3a7a", t: 6, pts: [[.82, 1.0], [.92, 1.05], [1, 1.1]] }]), nac: "#c4cad0" },
+  // United (current): white top, grey belly, blue tail and engines
+  b739: { bellyC: "#8c97a3", belly: [[.05, .3], [.3, .34], [.6, .36], [.8, .4], [1, .48]], stripes: [{ c: "#1a4fa8", t: .5, pts: [[.05, .34], [.3, .38], [.6, .4], [.8, .44], [1, .52]] }],
+    fin: "#1a4fa8", finBands: [[.6, "#5a9de0", -6]], nac: "#1a4fa8" },
+  // Air Canada-style: black belly, black tail
+  b38m: { bellyC: "#141414", belly: [[.05, .12], [.4, .14], [.7, .16], [1, .3]], fin: "#141414", nac: "#141414" },
+  // Turkish-style: white, red tail
+  b39m: { fin: "#c8102e" },
+  // American (polished): silver with red/white/blue cheatline
+  b752: { topC: "#c4cad0", top: [[0, -.2], [1, -.2]], fin: "#c4cad0",
+    stripes: [{ c: "#c8102e", t: .7, pts: [[.04, .5], [.5, .5], [.95, .52]] }, { c: "#f4f4f2", t: .4, pts: [[.05, .43], [.5, .43], [.95, .45]] }, { c: "#1b3f8c", t: .7, pts: [[.06, .39], [.5, .39], [.95, .41]] }], nac: "#c4cad0" },
+  b753: DELTA,
+  // Japan Airlines-style: plain white
+  b763: { fin: "#f4f4f2" },
+  b764: DELTA,
+  // KLM-style: light-blue top, white belly
+  b772: { topC: "#11a6df", top: [[0, .42], [.3, .42], [.7, .42], [1, .5]], stripes: [{ c: "#0b4f9c", t: .5, pts: [[.04, .44], [.5, .44], [.95, .5]] }],
+    fin: "#f4f4f2", finStripes: [{ c: "#11a6df", t: 5, pts: [[.8, .0], [.9, .02], [1, .04]] }], nac: "#f4f4f2" },
+  // United (Continental-era): white over grey-blue with gold line, navy tail
+  b77w: { bellyC: "#6f8094", belly: [[.05, .3], [.3, .32], [.6, .33], [.85, .38], [1, .46]], stripes: [{ c: "#c79a3e", t: .35, pts: [[.05, .33], [.3, .35], [.6, .36], [.85, .41], [1, .49]] }],
+    fin: "#0f2a63", finBands: [[0, "#0f2a63"]], finStripes: [{ c: "#4f7fc2", t: 7, pts: [[.83, .45], [.93, .4], [1, .35]] }], nac: "#f4f4f2" },
+  // ANA-style: white, navy line, blue tail
+  b788: { stripes: [{ c: "#0b2a7a", t: .6, pts: [[.05, .35], [.4, .36], [.7, .37], [1, .42]] }, { c: "#2f8fd6", t: .4, pts: [[.1, .28], [.4, .29], [.7, .3], [1, .35]] }],
+    fin: "#0b2a7a", finStripes: [{ c: "#2f8fd6", t: 3, pts: [[.83, .1], [.92, .5], [1, .9]] }] },
+  // Norse-style: white, blue swirl aft, blue tail and engines
+  b789: { bellyC: "#0d47a1", belly: [[.0, -.3], [.55, -.15], [.7, .1], [.82, .35], [.92, .55], [1, .7]], stripes: [{ c: "#5fa6e6", t: 1.4, pts: [[.55, .05], [.7, .25], [.82, .45], [.92, .68], [1, .85]] }],
+    fin: "#0d47a1", finStripes: [{ c: "#5fa6e6", t: 3, pts: [[.83, .3], [.9, .6], [.97, .95]] }], nac: "#7fb6e8" },
+  // United (Continental-era) with gold cheatline
+  b78x: { bellyC: "#6f8094", belly: [[.05, .26], [.3, .28], [.6, .29], [.85, .34], [1, .42]], stripes: [{ c: "#c79a3e", t: .35, pts: [[.05, .3], [.3, .32], [.6, .33], [.85, .38], [1, .46]] }],
+    fin: "#0f2a63", finStripes: [{ c: "#4f7fc2", t: 7, pts: [[.83, .45], [.93, .4], [1, .35]] }] },
+  // Virgin-style: white, red tail and engines, burgundy belly aft
+  b744: { bellyC: "#5a1636", belly: [[.55, -.2], [.7, .08], [.85, .22], [1, .38]], fin: "#d7142a", nac: "#d7142a",
+    stripes: [{ c: "#d7142a", t: .5, pts: [[.6, .12], [.75, .3], [.88, .45], [1, .6]] }] },
+  // Lufthansa-style: white, navy tail, white engines
+  b748: { fin: "#0a1d3d", stripes: [{ c: "#0a1d3d", t: .35, pts: [[.05, .38], [.5, .38], [.95, .42]] }] },
+  // Austrian-style: white, red tail and engines
+  a319: { fin: "#d0102a", finStripes: [{ c: "#f4f4f2", t: 1.4, pts: [[.83, .45], [.9, .55], [.97, .62]] }], nac: "#d0102a" },
+  // Air Serbia-style: red/blue tail, red/blue engines
+  a320: { fin: "#c8102e", finBands: [[.0, "#1c3f94"], [.42, "#c8102e", 10]], nac: "#c8102e", stripes: [{ c: "#1c3f94", t: .35, pts: [[.7, .3], [.85, .4], [1, .5]] }] },
+  // Air Corsica-style: white, blue tail
+  a20n: { fin: "#1d4f9c" },
+  // CSA-style: white, red/blue cheatline, striped tail
+  a321: { stripes: [{ c: "#c8102e", t: .55, pts: [[.04, .44], [.5, .44], [.95, .48]] }, { c: "#1d3f8c", t: .35, pts: [[.05, .37], [.5, .37], [.95, .41]] }],
+    finStripes: [{ c: "#c8102e", t: 2.2, pts: [[.82, .3], [.9, .45], [1, .6]] }, { c: "#1d3f8c", t: 2.2, pts: [[.82, .55], [.9, .7], [1, .85]] }] },
+  // Air New Zealand-style: white, black tail and aft fuselage
+  a21n: { aftC: "#141414", aft: [[.68, 1.2], [.74, .7], [.82, .3], [.9, .05], [1, -.1]], fin: "#141414" },
+  // Air France-style: white, blue/red striped tail
+  a332: { finStripes: [0, 1, 2].map(i => ({ c: "#0b2a7a", t: 1.3, pts: [[.84 + i * .025, .05], [.9 + i * .025, .5], [.96 + i * .025, .95]] })).concat([{ c: "#d7142a", t: 1.6, pts: [[.93, .05], [.97, .4], [1.02, .8]] }]) },
+  // Aer Lingus-style: green top, white belly
+  a333: { topC: "#3fb39a", top: [[0, .44], [.3, .44], [.7, .44], [1, .5]], stripes: [{ c: "#0f7a64", t: .5, pts: [[.04, .46], [.5, .46], [.95, .52]] }], fin: "#3fb39a", nac: "#f4f4f2" },
+  // Azul-style: white top, navy belly with green/yellow stripes, navy tail
+  a339: { bellyC: "#0b2a6b", belly: [[.05, .2], [.3, .26], [.6, .28], [.85, .34], [1, .44]],
+    stripes: [{ c: "#2e9e4f", t: .6, pts: [[.2, .32], [.4, .32], [.6, .33], [.85, .39], [1, .49]] }, { c: "#f2c230", t: .35, pts: [[.25, .38], [.4, .37], [.6, .38], [.85, .44], [1, .53]] }],
+    fin: "#0b2a6b", nac: "#0b2a6b" },
+  // Singapore-style: white, navy tail with gold, navy/gold belly line
+  a359: { stripes: [{ c: "#0b1f4d", t: .55, pts: [[.04, .3], [.5, .3], [.95, .34]] }, { c: "#c79a3e", t: .3, pts: [[.05, .25], [.5, .25], [.95, .29]] }],
+    fin: "#0b1f4d", finStripes: [{ c: "#c79a3e", t: 2, pts: [[.84, .1], [.91, .5], [.98, .9]] }] },
+  // British Airways-style: white top, navy belly, red/blue tail
+  a35k: { bellyC: "#0c2a6a", belly: [[.05, .2], [.4, .24], [.7, .26], [1, .36]], stripes: [{ c: "#d7142a", t: .5, pts: [[.04, .27], [.4, .3], [.7, .32], [1, .42]] }],
+    finStripes: [{ c: "#d7142a", t: 3, pts: [[.83, .25], [.9, .4], [1, .45]] }, { c: "#0c2a6a", t: 3, pts: [[.83, .6], [.9, .72], [1, .78]] }, { c: "#d7142a", t: 1.6, pts: [[.84, .9], [.92, .98], [1, 1.02]] }], nac: "#0c2a6a" },
+  // Emirates-style: white, red/green/white/black flag tail
+  a388: { fin: "#f4f4f2", finBands: [[.0, "#1a1a1a"], [.3, "#f4f4f2"], [.6, "#00843d"]],
+    finStripes: [{ c: "#d0102a", t: 4, pts: [[.78, -.3], [.86, .3], [.93, 1.05]] }], stripes: [{ c: "#d0102a", t: 1.6, pts: [[.7, .05], [.78, .3], [.85, .65], [.9, 1.0]] }] }
+};
 /* ---------- service lookup ---------- */
 // fuel: spr = single-point, ow = overwing only. lav: ext = external service, int = serviced inside, opt = external on some.
 // ok:false = location not confirmed by a source.
